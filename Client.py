@@ -1,35 +1,50 @@
-import socket 
+import socket
 
 IP = socket.gethostbyname(socket.gethostname())
-Port = 1233
-add = (IP, Port)
+PORT = 1234
+ADDR = (IP, PORT)
 FORMAT = "utf-8"
 SIZE = 1024
 
-
-
 def main():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect(add)
+    client.connect(ADDR)
 
+    while True:
+        data = client.recv(SIZE).decode(FORMAT)
+        cmd, msg = data.split("@")
 
-    file = open("learn.txt", "rb")
-    byte = file.read()
-    data = byte.decode("utf-8") 
-    
-    print(data)
+        if cmd == "DISCONNECTED":
+            print(f"[SERVER]: {msg}")
+            break
+        elif cmd == "OK":
+            print(f"{msg}")
 
-    client.send("learn.txt".encode(FORMAT))
-    msg = client.recv(SIZE).decode(FORMAT)
-    print(f"[SEVER]: {msg}")
+        data = input("> ")
+        data = data.split(" ")
+        cmd = data[0]
 
-    client.send(data.encode(FORMAT))
+        if cmd == "HELP":
+            client.send(cmd.encode(FORMAT))
+        elif cmd == "LOGOUT":
+            client.send(cmd.encode(FORMAT))
+            break
+        elif cmd == "LIST":
+            client.send(cmd.encode(FORMAT))
+        elif cmd == "DOWNLOAD":
+            client.recv(SIZE).decode(FORMAT)
+        elif cmd == "UPLOAD":
+            path = data[1]
 
-    msg = client.recv(SIZE).decode(FORMAT)
-    print(f"[SEVER]: {msg}")
+            with open(f"{path}", "r") as f:
+                text = f.read()
 
-    file.close()
+            filename = path.split("/")[-1]
+            send_data = f"{cmd}@{filename}@{text}"
+            client.send(send_data.encode(FORMAT))
+
+    print("Disconnected from the server.")
     client.close()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

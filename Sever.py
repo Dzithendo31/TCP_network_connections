@@ -1,40 +1,90 @@
-import socket 
+import os
+import socket
+import threading
 
 IP = socket.gethostbyname(socket.gethostname())
-Port = 1233
-add = (IP, Port)
-FORMAT = "utf-8"
+PORT = 1234
+ADDR = (IP, PORT)
 SIZE = 1024
+FORMAT = "utf-8"
+SERVER_DATA_PATH = "server_data"
 
-def main():
-    print("[STARTING] Sever is starting.")
-    sever = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sever.bind(add)
-    sever.listen()
-    print("[LISTENING] Sever is listening.")
+def handle_client(conn, addr):
+    print(f"[NEW CONNECTION] {addr} connected.")
+    conn.send("OK@Welcome to the File Server.".encode(FORMAT))
 
     while True:
-        conn, addr = sever.accept()
-        print(f"[NEW CONNECTION] {addr} connected.")
-
-        filename = conn.recv(SIZE).decode(FORMAT)
-        #print(filename)
-        print("[RECV] Filename received")
-        file = open(f"data/{filename}", "wb")
-        conn.send("Filename received".encode(FORMAT))
-
         data = conn.recv(SIZE).decode(FORMAT)
-        data = bytes(data, encoding='utf-8')
-        print("[RECV] Filename received")
-        file.write(data)
-        conn.send("File data received".encode(FORMAT))
+        data = data.split("@")
+        cmd = data[0]
 
-        file.close()
-        conn.close()
+        if cmd == "LIST":
+            files = os.listdir(SERVER_DATA_PATH)
+            send_data = "OK@"
 
-        print(f"[Disconnected] {addr} disconnected." )
+            if len(files) == 0:
+                send_data += "The server directory is empty"
+            else:
+                send_data += "\n".join(f for f in files)
+            conn.send(send_data.encode(FORMAT))
 
+        elif cmd == "UPLOAD":
+            name, text = data[1], data[2]
+            filepath = os.path.join(SERVER_DATA_PATH, name)
+            with open(filepath, "w") as f:
+                f.write(text)
 
+            send_data = "OK@File uploaded successfully."
+            conn.send(send_data.encode(FORMAT))
 
-if __name__ == '__main__':
+        elif cmd == "DOWNLOAD":
+            files = os.listdir(SERVER_DATA_PATH)
+            send_data = "OK@"
+            filename = data[1]
+
+            if len(files) == 0:
+                send_data += "The server directory is empty"
+            else:
+                if filename in files:
+                    with open(filename, "r") as f:
+                        text = f.read()
+
+                        send_data = f"{cmd}@{filename}"
+                        conn.send(send_data.encode(FORMAT))
+                        conn.send(text.encode(FORMAT))
+                        send_data += "File downloaded successfully."
+                else:
+                    send_data += "File not found."
+
+            conn.send(send_data.encode(FORMAT))
+
+        elif cmd == "LOGOUT":
+            break
+        elif cmd == "HELP":
+            data = "OK@"
+            data += "LIST: List all the files from the server.\n"
+            data += "UPLOAD <path>: Upload a file to the server.\n"
+            data += "DOWNLOAD <filename>: Download a file from the server.\n"
+            data += "LOGOUT: Disconnect from the server.\n"
+            data += "HELP: List all the commands."
+
+            conn.send(data.encode(FORMAT))
+
+    print(f"[DISCONNECTED] {addr} disconnected")
+    conn.close()
+
+def main():
+    print("[STARTING] Server is starting")
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(ADDR)
+    server.listen()
+    print(f"[LISTENING] Server is listening on {IP}:{PORT}.")
+
+    while True:
+        conn, addr = server.accept()
+        thread = threading.Thread(target=handle_client, args=(conn, addr))
+        thread.start()
+        print(f"[ACTIVE CONNECTIONS] {threading.activeCount() - 1}")
+
+if __name__ == "__main__":
     main()
