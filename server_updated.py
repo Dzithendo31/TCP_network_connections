@@ -114,7 +114,7 @@ def query(my_files, String):
         String = String + obj.name + "  " + str(obj.pinCode) + "\n"
     return String
 def save_file(CSV,file_name,ope,pin):
-        with open(CSV, 'w', newline='') as csvfile:
+        with open(CSV, 'a', newline='') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow([file_name,ope,pin])
 
