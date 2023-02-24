@@ -35,7 +35,19 @@ def main():
             client.send("query/none/o@000".encode(FORMAT))
             msg = client.recv(SIZE).decode(FORMAT)
             print(f"[SEVER]:\n{msg}")
-        
+        elif cmd == "d":
+            filename = input('Enter filename: ')
+            pin = input('Enter File key, 0 if none: ')
+            client.send(f"download/{filename}/{pin}".encode(FORMAT))
+            
+            
+            msg = client.recv(SIZE).decode(FORMAT)
+            #this will either be Sending or NOT Found
+            #but before it downloads it has to check
+
+            #then if sending
+            download(filename,client)
+
         else:
             client.close()
             break
@@ -58,6 +70,17 @@ def upload(client,file_name):
     print(f"[SEVER]: {msg}")
 
     file.close()
+def download(file_name,client):
+
+    # Receive the file contents from the server
+    file_contents = client.recv(1024)
+
+    # Write the file contents to a new file
+    with open(file_name, 'wb') as f:
+        f.write(file_contents)
+
+    print(f'Received {file_name} from {IP}.')
+    # Close the client socket
 
 if __name__ == '__main__':
     main()

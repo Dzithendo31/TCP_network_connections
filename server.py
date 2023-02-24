@@ -34,8 +34,9 @@ def main():
 
             #now lets handle this request message
             command =conn.recv(SIZE).decode(FORMAT)
+            print(command)
             comnd,filename,state = command.split("/")
-            
+
             #now to handle the locked part
 
             if comnd == "upload":
@@ -60,7 +61,10 @@ def main():
                     conn.send(String.encode(FORMAT))
                     #the string is sent to user
                     print("There are Files")
-            #if comnd == "download":
+            elif comnd == "download":
+                #this where it gonna check even the passwords and stuff
+                
+                download(filename,conn,addr)
 
             else:
                 conn.close()
@@ -87,11 +91,17 @@ def upload(file_name,conn):
 def download(file_name,client,addr):
     #this is the method to download files from this server
     #two parameterfile name and the socket connection
-    with open(file_name, 'rb') as f:
-        file_contents = f.read()
-    # Send the file contents to the client
-    client.sendall(file_contents)
-    print(f'Sent {file_name} to {addr}.')
+    try:
+        with open(f"data/{file_name}", 'rb') as f:
+            file_contents = f.read()
+        # Send the file contents to the client
+        client.sendall(file_contents)
+        print(f'Sent {file_name} to {addr}.')
+    except Exception as e:
+        # If an error occurs, send an error message to the client
+        error_message = f'Error: {str(e)}'
+        client.sendall(error_message.encode('utf-8'))
+
 def query(my_files, String):
     #will take an array parameter of the files
     String = ""
