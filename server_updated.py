@@ -16,6 +16,7 @@ class File:
     
 def main():
     my_files = []
+    send_to_array(my_files)
     #this is the array for storing our File objects
     print("[STARTING] Sever is starting.")
     sever = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -112,10 +113,20 @@ def query(my_files, String):
     for obj in my_files:
         String = String + obj.name + "  " + str(obj.pinCode) + "\n"
     return String
-def save_file(CSV,file_name,open,pin):
+def save_file(CSV,file_name,ope,pin):
         with open(CSV, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(file_name,open,pin)
+            writer.writerow([file_name,ope,pin])
+
+def send_to_array(array):
+    with open("data/saved.csv", newline = '') as csvfile:
+        reader = csv.reader(csvfile,delimiter=',')
+
+        for row in reader:
+            ins_File = File(row[0],row[1],row[2])
+            print(row[0])
+            array.append(ins_File)
+
         
 if __name__ == '__main__':
     main()
