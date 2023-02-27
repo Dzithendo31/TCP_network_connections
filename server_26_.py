@@ -109,6 +109,20 @@ def upload(file_name,conn):
         print("[RECV] Filename Data received")
         file.write(data)
         conn.send("File data received".encode(FORMAT))
+        
+        
+        #Receive hash 
+         received_file_hash = conn.recv(64).decode()
+        #Create Hash
+        computed_file_hash = hashlib.sha256(data).hexdigest()
+        
+        #Compare two hashes
+        if received_file_hash == computed_file_hash:
+            print('File has been transmitted successfully')
+            conn.send("File received Unchanged!".encode(FORMAT))
+        else:
+            print('File has been corrupted during transmission')
+
 
         file.close()
 
