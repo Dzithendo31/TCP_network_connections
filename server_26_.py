@@ -113,7 +113,7 @@ def upload(file_name,conn):
         
         
         #Receive hash 
-         received_file_hash = conn.recv(64).decode()
+        received_file_hash = conn.recv(64).decode()
         #Create Hash
         computed_file_hash = hashlib.sha256(data).hexdigest()
         
