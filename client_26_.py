@@ -69,6 +69,13 @@ def upload(client,file_name):
 
     msg = client.recv(SIZE).decode(FORMAT)
     print(f"[SEVER]: {msg}")
+    
+    #Creating and Sending A hash to check if file altered.
+    file_hash = hashlib.sha256(byte).hexdigest()
+    client.sendall(file_hash.encode())
+
+    ms = client.recv(SIZE).decode(FORMAT)
+    print(ms)
 
     file.close()
 def download(file_name,client):
