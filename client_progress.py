@@ -7,7 +7,7 @@ Port = 1222
 add = (IP, Port)
 FORMAT = "utf-8"
 SIZE = 1024
-buffer = 1024
+buffer = 12551050
 
 
 
@@ -67,16 +67,15 @@ def upload(client,file_name):
     #get file size
     file_size = os.path.getsize(file_name)
     client.send(str(file_size).encode(FORMAT))
-    print(file_size)
-    sent = 0 #bytes
 
 
     with open(file_name, 'rb') as f:
 
+        sent = 0 #bytes
         while sent<file_size:
-            bytes_read = f.read(1096)
+            bytes_read = f.read(file_size)
             client.sendall(bytes_read)
-            sent += 1096
+            sent += len(bytes_read)
         # we use sendall to assure transimission in 
         # busy networks
 
@@ -106,9 +105,9 @@ def download(file_name,client):
         with open(file_name, 'wb') as f:
             
             while sent<SizeX:
-                data = client.recv(1096)#.decode(FORMAT)
-                sent += 1096
+                data = client.recv(SizeX)#.decode(FORMAT)
                 f.write(data)
+                sent += len(data)
 
             f.close()
         
