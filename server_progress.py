@@ -2,6 +2,8 @@ import socket
 import csv
 import hashlib
 
+import os
+
 IP = socket.gethostbyname(socket.gethostname())
 Port = 1222
 add = (IP, Port)
@@ -85,7 +87,8 @@ def main():
                     if ans.pinCode == code:
                         #sends a message to server that file was found
                         conn.send("FOUND".encode(FORMAT))
-                        download(filename,conn,addr)
+                        siZe = os.path.getsize(f"data/{filename}")
+                        download(filename,conn,addr,siZe)
                     else:
                         #sends message that file was found but incorrect password
                         #for security reason this is the same code as when the file was not found
@@ -135,22 +138,27 @@ def upload(file_name,conn):
             print('File has been corrupted during transmission')
 
         
-def download(file_name,client,addr):
+def download(file_name,client,addr,size):
     #this is the method to download files from this server
     #two parameterfile name and the socket connection
-    try:
-        with open(f"data/{file_name}", 'rb') as f:
-            file_contents = f.read(1024)
-        # Send the file contents to the client
-        #client.sendall(file_contents)
-            while file_contents:
-                client.send(1024)
-                file_contents = f.read(1024)
-        print(f'Sent {file_name} to {addr}.')
-    except Exception as e:
-        # If an error occurs, send an error message to the client
-        error_message = f'Error: {str(e)}'
-        client.sendall(error_message.encode(FORMAT))
+    msg = client.recv(SIZE).decode(FORMAT)
+    print(f"[Client]: {msg}")
+
+    #get file size
+    file_size = size
+    client.send(str(file_size).encode(FORMAT))
+    print(file_size)
+    sent = 0 #bytes
+
+
+    with open(f"data/{file_name}", 'rb') as f:
+
+        while sent<file_size:
+            bytes_read = f.read(1096)
+            client.sendall(bytes_read)
+            sent += 1096
+    msg = client.recv(SIZE).decode(FORMAT)
+    print(f"[Client]: {msg}")
 
 def query(my_files, String):
     #will take an array parameter of the files
