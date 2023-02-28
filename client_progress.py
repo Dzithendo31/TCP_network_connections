@@ -18,7 +18,7 @@ def main():
 
     while True:
         cmd = ""
-        cmd = input("enter command to send to server:\n'd' download\n'u' Upload\n'q' Query files\n")
+        cmd = input("enter command to send to server:\n'd' download\n'u' Upload\n'l' To list files\n'q' to Quit\n " )
 
         #command, file_name = cmd.split()
         if cmd == "u" or cmd == "U":
@@ -31,7 +31,7 @@ def main():
                 pin = input("Enter code to Lock file:")
                 client.send(f"upload/{file_name}/C@{pin}".encode(FORMAT))
             upload(client,file_name)
-        elif cmd == "q" or cmd == "Q":
+        elif cmd == "l" or cmd == "L":
             #client.send("query/none/o@000".encode(FORMAT))
             #the program will then recieve a long string of all the Files
             client.send("query/none/o@000".encode(FORMAT))
@@ -50,7 +50,6 @@ def main():
             #but before it downloads it has to check
             else:
                 download(filename,client)
-
         else:
             "Incorrect Input, connection Lost"
             client.close()
@@ -97,17 +96,24 @@ def upload(client,file_name):
 
 def download(file_name,client):
 
-    # Receive the file contents from the server
-    file_contents = client.recv(1024)
+        print("[RECV] Filename received")
+        #file = open(f"data/{file_name}", "wb")
+        client.send("Filename received".encode(FORMAT))
 
-    # Write the file contents to a new file
-    with open(file_name, 'wb') as f:
-        while file_contents:
-            f.write(file_contents)
-            file_contents = client.recv(1024)
+        SizeX = int(client.recv(SIZE).decode(FORMAT))
+        #data = bytes(data, encoding='utf-8')
+        sent = 0
+        with open(file_name, 'wb') as f:
+            
+            while sent<SizeX:
+                data = client.recv(1096)#.decode(FORMAT)
+                sent += 1096
+                f.write(data)
 
-    print(f'Received {file_name} from {IP}.')
-    # Close the client socket
+            f.close()
+        
+        print("[RECV] Filename Data received")
+        client.send("File data received".encode(FORMAT))
 
 if __name__ == '__main__':
     main()
