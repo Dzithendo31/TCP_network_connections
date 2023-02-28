@@ -9,7 +9,7 @@ Port = 1222
 add = (IP, Port)
 FORMAT = "utf-8"
 SIZE = 1024
-buffer = 4096
+buffer = 12551050
 
 #an Array to act as a Database :: 1. Name of File, 2. boolean Open or Locked 3. passCode ::default to 0000
 class File:
@@ -115,9 +115,9 @@ def upload(file_name,conn):
         with open(f"data/{file_name}", 'wb') as f:
             
             while sent<SizeX:
-                data = conn.recv(1096)#.decode(FORMAT)
-                sent += 1096
+                data = conn.recv(SizeX)#.decode(FORMAT)
                 f.write(data)
+                sent += len(data)
 
             f.close()
         
@@ -154,9 +154,9 @@ def download(file_name,client,addr,size):
     with open(f"data/{file_name}", 'rb') as f:
 
         while sent<file_size:
-            bytes_read = f.read(1096)
+            bytes_read = f.read(file_size)
             client.sendall(bytes_read)
-            sent += 1096
+            sent += sent(bytes_read)
     msg = client.recv(SIZE).decode(FORMAT)
     print(f"[Client]: {msg}")
 
