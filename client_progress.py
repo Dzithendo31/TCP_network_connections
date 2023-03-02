@@ -1,13 +1,15 @@
+from http import client
 import socket
 import hashlib
 import os
+import ssl
 
 IP = socket.gethostbyname(socket.gethostname())
-Port = 1222
+Port = 1133
 add = (IP, Port)
 FORMAT = "utf-8"
 SIZE = 1024
-buffer = 12551050
+buffer = 1024
 
 
 
@@ -16,6 +18,9 @@ def main():
     client.connect(add)
     #now the connection has been established
 
+    #use of SLL to wrap the socket  with SLL
+    #context = ssl.create_default_context()
+    #client = context.wrap_socket(TCP_client, server_hostname="localhost")
     while True:
         cmd = ""
         cmd = input("enter command to send to server:\n'd' download\n'u' Upload\n'l' To list files\n'q' to Quit\n " )
@@ -30,7 +35,11 @@ def main():
             if state == "C" or state == "c":
                 pin = input("Enter code to Lock file:")
                 client.send(f"upload/{file_name}/C@{pin}".encode(FORMAT))
-            upload(client,file_name)
+            try:
+                upload(client,file_name)
+            except:
+                print("Error has occured, restart App.")
+                continue
         elif cmd == "l" or cmd == "L":
             #client.send("query/none/o@000".encode(FORMAT))
             #the program will then recieve a long string of all the Files
@@ -67,30 +76,47 @@ def upload(client,file_name):
     #get file size
     file_size = os.path.getsize(file_name)
     client.send(str(file_size).encode(FORMAT))
+    print(file_size)
+    sent = 0 #bytes
 
-
+    print("up;loading")
     with open(file_name, 'rb') as f:
 
-        sent = 0 #bytes
         while sent<file_size:
-            bytes_read = f.read(file_size)
+
+            bytes_read = f.read(1096)
             client.sendall(bytes_read)
-            sent += len(bytes_read)
-        # we use sendall to assure transimission in 
-        # busy networks
+
+            #get the hash for the specific bytes being sent
+            file_hash = hashlib.sha256(bytes_read).hexdigest()
+            #send the hash to the server
+            client.sendall(file_hash.encode())
+
+            #wait for the servers response on 
+            msd = client.recv(SIZE).decode(FORMAT)
+            if msd == "Continue":
+                sent += 1096
+                continue
+            else:
+                print("File disturedbed")
+                break
+            # we use sendall to assure transimission in 
+            
 
     #send signal than its done
     #client.send(data.encode(FORMAT))
-    msg = client.recv(SIZE).decode(FORMAT)
-    print(f"[SEVER]: {msg}")
+    #msg = client.recv(SIZE).decode(FORMAT)
+    #print(f"[SEVER]: {msg}")
     #Creating and Sending A hash to check if file altered.
-    file = open(file_name, "rb")
-    byte = file.read()
-    file_hash = hashlib.sha256(byte).hexdigest()
-    client.sendall(file_hash.encode())
+    #file = open(file_name, "rb")
+    #byte = file.read()
+    
+    #file_hash = hashlib.sha256(byte).hexdigest()
+    #print(file_hash)
+    #client.sendall(file_hash.encode())
 
-    ms = client.recv(SIZE).decode(FORMAT)
-    print(f"[SEVER]: {ms}")
+    #ms = client.recv(SIZE).decode(FORMAT)
+    #print(f"[SEVER]: {ms}")
 
 
 def download(file_name,client):
@@ -105,9 +131,19 @@ def download(file_name,client):
         with open(file_name, 'wb') as f:
             
             while sent<SizeX:
-                data = client.recv(SizeX)#.decode(FORMAT)
-                f.write(data)
-                sent += len(data)
+                data = client.recv(1096)#.decode(FORMAT)
+                
+                computed_file_hash = hashlib.sha256(data).hexdigest()
+                hash = client.recv(64).decode(FORMAT)
+                if hash == computed_file_hash:
+                    sent += 1096
+                    f.write(data)
+                    client.send("Continue".encode(FORMAT))
+                else:
+                    #delete file
+                    os.remove(f"data/{file_name}")
+                    client.send("Corrupt".encode(FORMAT))
+                    break
 
             f.close()
         
