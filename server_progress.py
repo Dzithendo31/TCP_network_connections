@@ -5,11 +5,11 @@ import hashlib
 import os
 
 IP = socket.gethostbyname(socket.gethostname())
-Port = 1222
+Port = 1133
 add = (IP, Port)
 FORMAT = "utf-8"
 SIZE = 1024
-buffer = 12551050
+buffer = 4096
 
 #an Array to act as a Database :: 1. Name of File, 2. boolean Open or Locked 3. passCode ::default to 0000
 class File:
@@ -108,35 +108,36 @@ def upload(file_name,conn):
         print("[RECV] Filename received")
         #file = open(f"data/{file_name}", "wb")
         conn.send("Filename received".encode(FORMAT))
-
-        SizeX = int(conn.recv(SIZE).decode(FORMAT))
+        try:
+            SizeX = int(conn.recv(SIZE).decode(FORMAT))
+        except:
+            print("no ways")
+            return
         #data = bytes(data, encoding='utf-8')
         sent = 0
         with open(f"data/{file_name}", 'wb') as f:
             
             while sent<SizeX:
-                data = conn.recv(SizeX)#.decode(FORMAT)
-                f.write(data)
-                sent += len(data)
+                data = conn.recv(1096)#.decode(FORMAT)
+                computed_file_hash = hashlib.sha256(data).hexdigest()
+                #print(computed_file_hash)
+                #so the alogorithm 
+                #check each byte's hash if it does it match, stop and delete what is written
+                hash = conn.recv(64).decode(FORMAT)
+                if hash == computed_file_hash:
+                    sent += 1096
+                    f.write(data)
+                    conn.send("Continue".encode(FORMAT))
+                else:
+                    #delete file
+                    os.remove(f"data/{file_name}")
+                    conn.send("Corrupt".encode(FORMAT))
+                    break
 
             f.close()
         
         print("[RECV] Filename Data received")
         conn.send("File data received".encode(FORMAT))
-
-
-        #Receive hash 
-        received_file_hash = conn.recv(64).decode()
-        #Create Hash
-        computed_file_hash = hashlib.sha256(data).hexdigest()
-        
-        #Compare two hashes
-        if received_file_hash == computed_file_hash:
-            print('File has been transmitted successfully')
-            conn.send("File received Unchanged!".encode(FORMAT))
-        else:
-            print('File has been corrupted during transmission')
-
         
 def download(file_name,client,addr,size):
     #this is the method to download files from this server
@@ -147,16 +148,26 @@ def download(file_name,client,addr,size):
     #get file size
     file_size = size
     client.send(str(file_size).encode(FORMAT))
-    print(file_size)
     sent = 0 #bytes
 
 
     with open(f"data/{file_name}", 'rb') as f:
 
         while sent<file_size:
-            bytes_read = f.read(file_size)
+            bytes_read = f.read(1096)
             client.sendall(bytes_read)
-            sent += sent(bytes_read)
+            file_hash = hashlib.sha256(bytes_read).hexdigest()
+            #send the hash to the server
+            client.sendall(file_hash.encode())
+
+            #wait for the servers response on 
+            msd = client.recv(SIZE).decode(FORMAT)
+            if msd == "Continue":
+                sent += 1096
+                continue
+            else:
+                print("File disturedbed")
+                break
     msg = client.recv(SIZE).decode(FORMAT)
     print(f"[Client]: {msg}")
 
