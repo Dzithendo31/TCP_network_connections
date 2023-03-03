@@ -5,11 +5,12 @@ import os
 import ssl
 
 IP = socket.gethostbyname(socket.gethostname())
-Port = 1133
+Port = 4000
 add = (IP, Port)
 FORMAT = "utf-8"
 SIZE = 1024
 buffer = 1024
+#
 
 
 
@@ -23,7 +24,7 @@ def main():
     #client = context.wrap_socket(TCP_client, server_hostname="localhost")
     while True:
         cmd = ""
-        cmd = input("enter command to send to server:\n'd' download\n'u' Upload\n'l' To list files\n'q' to Quit\n " )
+        cmd = input("enter command to send to server:\n'd' download\n'u' Upload\n'X' Upload\n'l' To list files\n'q' to Quit\n " )
 
         #command, file_name = cmd.split()
         if cmd == "u" or cmd == "U":
@@ -35,8 +36,17 @@ def main():
             if state == "C" or state == "c":
                 pin = input("Enter code to Lock file:")
                 client.send(f"upload/{file_name}/C@{pin}".encode(FORMAT))
+            else:
+                print("Incorrect input.")
+                continue
             try:
+                #before upload changefile name if duplicate
+                #so client waits for message from server of how the file is saved.
+                msg = client.recv(64).decode(FORMAT)
+                print(f"[SEVER]:\n{msg}")
+                print("uploading")
                 upload(client,file_name)
+
             except:
                 print("Error has occured, restart App.")
                 continue
@@ -46,7 +56,7 @@ def main():
             client.send("query/none/o@000".encode(FORMAT))
             msg = client.recv(SIZE).decode(FORMAT)
             print(f"[SEVER]:\n{msg}")
-        elif cmd == "d" or cmd == "Q":
+        elif cmd == "d" or cmd == "D":
             filename = input('Enter filename: ')
             pin = input('Enter File key, 0 if none: ')
             client.send(f"download/{filename}/{pin}".encode(FORMAT))
@@ -59,6 +69,18 @@ def main():
             #but before it downloads it has to check
             else:
                 download(filename,client)
+        elif cmd == "X" or cmd == "x":
+            filename = input('Enter filename: ')
+            pin = input('Enter File key, 0 if none: ')
+            client.send(f"delete/{filename}/{pin}".encode(FORMAT))
+            msg = client.recv(SIZE).decode(FORMAT)
+            if msg == "NONE":
+                print("File not found or Incorrect Key for File Delete")
+            else:
+                print(f"File{filename} delete")
+            #wait for message and break
+
+        
         else:
             "Incorrect Input, connection Lost"
             client.close()
@@ -66,20 +88,19 @@ def main():
 
 
 def upload(client,file_name):
-
+    print("uploading now2")
     #client.send("learn.txt".encode(FORMAT))
     
     #this part waits for the message of FileName recieved
-    msg = client.recv(SIZE).decode(FORMAT)
-    print(f"[SEVER]: {msg}")
 
     #get file size
     file_size = os.path.getsize(file_name)
+    #2A
     client.send(str(file_size).encode(FORMAT))
     print(file_size)
     sent = 0 #bytes
 
-    print("up;loading")
+    print("uploading......")
     with open(file_name, 'rb') as f:
 
         while sent<file_size:
@@ -100,24 +121,8 @@ def upload(client,file_name):
             else:
                 print("File disturedbed")
                 break
-            # we use sendall to assure transimission in 
-            
-
-    #send signal than its done
-    #client.send(data.encode(FORMAT))
-    #msg = client.recv(SIZE).decode(FORMAT)
-    #print(f"[SEVER]: {msg}")
-    #Creating and Sending A hash to check if file altered.
-    #file = open(file_name, "rb")
-    #byte = file.read()
-    
-    #file_hash = hashlib.sha256(byte).hexdigest()
-    #print(file_hash)
-    #client.sendall(file_hash.encode())
-
-    #ms = client.recv(SIZE).decode(FORMAT)
-    #print(f"[SEVER]: {ms}")
-
+        #just for message controls 
+        control = client.recv(SIZE).decode(FORMAT)
 
 def download(file_name,client):
 
@@ -128,7 +133,7 @@ def download(file_name,client):
         SizeX = int(client.recv(SIZE).decode(FORMAT))
         #data = bytes(data, encoding='utf-8')
         sent = 0
-        with open(file_name, 'wb') as f:
+        with open(f"downloads/{file_name}", 'wb') as f:
             
             while sent<SizeX:
                 data = client.recv(1096)#.decode(FORMAT)
@@ -149,6 +154,7 @@ def download(file_name,client):
         
         print("[RECV] Filename Data received")
         client.send("File data received".encode(FORMAT))
+
 
 if __name__ == '__main__':
     main()
