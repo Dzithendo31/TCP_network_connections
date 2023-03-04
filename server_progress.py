@@ -4,11 +4,13 @@ import hashlib
 import threading
 import os
 
+import time
+
 IP = ""
 #comment out to get host not local
 IP = socket.gethostbyname(socket.gethostname())
 
-Port = 4000
+Port = 4001
 add = (IP, Port)
 FORMAT = "utf-8"
 SIZE = 1024
@@ -34,11 +36,11 @@ def handle_client(conn, addr):
 
             #now lets handle this request message
             command =conn.recv(SIZE).decode(FORMAT)
-            if len(command.split("/")) < 3:
+            if len(command.split("%")) < 3:
                 conn.close()
                 print(f"[Disconnected] {addr} disconnected, Incorrect input on Client" )
                 break
-            comnd,filename,state = command.split("/")
+            comnd,filename,state = command.split("%")
 
             #now to handle the locked part
 
@@ -67,6 +69,7 @@ def handle_client(conn, addr):
                     #this will be when the file is open
                     i = 1
                     filename_ori = filename
+                    print(filename)
                     while True:
                     #check fil
                         if search_array(my_files,filename) == None:
@@ -81,7 +84,8 @@ def handle_client(conn, addr):
                             i += 1
                             continue
                         #send file name to user and pin
-                    my_files.append(File(filename,"open",0))
+                    print(filename)
+                    my_files.append(File(filename,"open","0"))
                     save_file("data/saved.csv",filename,"open",0)
                 #then call the uploading stuff
                 conn.send(f"\nWill be Saved as {filename} \n".encode(FORMAT))
@@ -111,9 +115,14 @@ def handle_client(conn, addr):
                     #look into password now
                     if ans.pinCode == code:
                         #sends a message to server that file was found
+                        
                         conn.send("FOUND".encode(FORMAT))
-                        siZe = os.path.getsize(f"data/{filename}")
-                        download(filename,conn,addr,siZe)
+                        try:
+                            siZe = os.path.getsize(f"data/{filename}")
+                            download(filename,conn,addr,siZe)
+                        except:
+                            print("FileNotFound")
+                            break
                     else:
                         #sends message that file was found but incorrect password
                         #for security reason this is the same code as when the file was not found
@@ -122,8 +131,7 @@ def handle_client(conn, addr):
                 #implementation copies how download is strucutre
                 code = state
                 #method to search for file name in protocol
-
-                #search for array 
+                send_to_array(my_files)
                 ans = search_array(my_files, filename)
                 if ans == None:
                     #sends a message to server that file was not found
@@ -235,11 +243,12 @@ def download(file_name,client,addr,size):
     print(f"[Client]: {msg}")
 
 def query(my_files, String):
-    #will take an array parameter of the files
+    #will take an array parameter of theu
+    # files
     String = ""
     #this will be the string sent on to the client
     for obj in my_files:
-        String = String + obj.name + "  " + str(obj.open) + "\n"
+        String = String + "{:25}".format(obj.name) + "  " + str(obj.open) + "\n"
     return String
 def save_file(CSV,file_name,ope,pin):
         with open(CSV, 'a', newline='') as csvfile:
