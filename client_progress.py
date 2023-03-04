@@ -1,11 +1,12 @@
-from http import client
+from curses import window
 import socket
 import hashlib
 import os
 import ssl
+from tkinter import filedialog
 
 IP = socket.gethostbyname(socket.gethostname())
-Port = 4000
+Port = 4001
 add = (IP, Port)
 FORMAT = "utf-8"
 SIZE = 1024
@@ -24,18 +25,21 @@ def main():
     #client = context.wrap_socket(TCP_client, server_hostname="localhost")
     while True:
         cmd = ""
-        cmd = input("enter command to send to server:\n'd' download\n'u' Upload\n'X' Upload\n'l' To list files\n'q' to Quit\n " )
+        cmd = input("enter command to send to server:\n'd' download\n'u' Upload\n'X' delete file\n'l' To list files\n'q' to Quit\n " )
 
         #command, file_name = cmd.split()
         if cmd == "u" or cmd == "U":
             
-            file_name = input("Enter file_name:")
+            #file_name = input("Enter file_name:")
+            file_name = filedialog.askopenfilename()
+            path = file_name.split("/")
+            file_name = path[-1]
             state = input("closed 'C' or open 'O':")
             if state == "O" or state == "o":
-                client.send(f"upload/{file_name}/O".encode(FORMAT))
-            if state == "C" or state == "c":
+                client.send(f"upload%{file_name}%O".encode(FORMAT))
+            elif state == "C" or state == "c":
                 pin = input("Enter code to Lock file:")
-                client.send(f"upload/{file_name}/C@{pin}".encode(FORMAT))
+                client.send(f"upload%{file_name}%C@{pin}".encode(FORMAT))
             else:
                 print("Incorrect input.")
                 continue
@@ -44,7 +48,6 @@ def main():
                 #so client waits for message from server of how the file is saved.
                 msg = client.recv(64).decode(FORMAT)
                 print(f"[SEVER]:\n{msg}")
-                print("uploading")
                 upload(client,file_name)
 
             except:
@@ -53,13 +56,15 @@ def main():
         elif cmd == "l" or cmd == "L":
             #client.send("query/none/o@000".encode(FORMAT))
             #the program will then recieve a long string of all the Files
-            client.send("query/none/o@000".encode(FORMAT))
+            client.send("query%none%000".encode(FORMAT))
             msg = client.recv(SIZE).decode(FORMAT)
-            print(f"[SEVER]:\n{msg}")
+            print("{:25}".format("Name") + "  State  Size")
+            print(msg)
+
         elif cmd == "d" or cmd == "D":
             filename = input('Enter filename: ')
             pin = input('Enter File key, 0 if none: ')
-            client.send(f"download/{filename}/{pin}".encode(FORMAT))
+            client.send(f"download%{filename}%{pin}".encode(FORMAT))
             
             
             msg = client.recv(SIZE).decode(FORMAT)
@@ -68,16 +73,20 @@ def main():
             #this will either be Sending or NOT Found
             #but before it downloads it has to check
             else:
-                download(filename,client)
+                try:
+                    download(filename,client)
+                except:
+                    print("Error from server.")
+                    continue
         elif cmd == "X" or cmd == "x":
             filename = input('Enter filename: ')
             pin = input('Enter File key, 0 if none: ')
-            client.send(f"delete/{filename}/{pin}".encode(FORMAT))
+            client.send(f"delete%{filename}%{pin}".encode(FORMAT))
             msg = client.recv(SIZE).decode(FORMAT)
             if msg == "NONE":
                 print("File not found or Incorrect Key for File Delete")
             else:
-                print(f"File{filename} delete")
+                print(f"File {filename} deleted")
             #wait for message and break
 
         
@@ -88,7 +97,6 @@ def main():
 
 
 def upload(client,file_name):
-    print("uploading now2")
     #client.send("learn.txt".encode(FORMAT))
     
     #this part waits for the message of FileName recieved
@@ -97,7 +105,6 @@ def upload(client,file_name):
     file_size = os.path.getsize(file_name)
     #2A
     client.send(str(file_size).encode(FORMAT))
-    print(file_size)
     sent = 0 #bytes
 
     print("uploading......")
@@ -135,6 +142,7 @@ def download(file_name,client):
         sent = 0
         with open(f"downloads/{file_name}", 'wb') as f:
             
+            print("Downloading....")
             while sent<SizeX:
                 data = client.recv(1096)#.decode(FORMAT)
                 
